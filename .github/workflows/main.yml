@@ -49,6 +49,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y libxrandr-dev
+        sudo apt-get install -y libxinerama-dev
 
     - name: Configure CMake
       run: >

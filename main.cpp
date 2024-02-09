@@ -158,7 +158,7 @@ int main()
     int element = 0;
     for (auto & cell : grid)
     {
-        cell = std::make_unique<Cube>(Vector3{0,0,0},true,false,null);
+        cell = std::make_unique<Cube>(Vector3{0,0,0},true,false,null, 0);
     }
 
     ///POPULATE COORDS

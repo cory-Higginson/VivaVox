@@ -1,11 +1,8 @@
 
 #include "Cell.h"
 #include "FunctionRules.h"
-#include "cmake-build-release/_deps/raylib-src/src/raymath.h"
-
 #include <algorithm>
 #include <array>
-#include <external/miniaudio.h>
 #include <iostream>
 #include <memory>
 #include <random>
@@ -87,6 +84,7 @@ int xyzToElement(int x, int y, int z) {
 
 
 int main()
+{
     InitWindow(1920,1080,PROJECTNAME);
     SetTargetFPS(60);
     std::cout << "Hello, World!" << std::endl;
@@ -98,9 +96,6 @@ int main()
     cam.projection = CAMERA_PERSPECTIVE;
     DisableCursor();
     int cubesammount = 0;
-    Mesh cuber = GenMeshCube(1,1,1);
-    Material matInstances = LoadMaterialDefault();
-
 
 
 
@@ -166,6 +161,7 @@ int main()
         cell = std::make_unique<Cube>(Vector3{0,0,0},true,false,null);
     }
 
+    ///POPULATE COORDS
     for (int layer = 0; layer < size; ++layer)
     {
         int top = 0, bottom = size - 1, left = 0, right = size - 1;
@@ -239,6 +235,8 @@ int main()
                 std::cout << num << "\n";
             }
         }
+
+        /// update
         UpdateCamera(&cam,CAMERA_FREE);
 
         if (tap)
@@ -294,7 +292,7 @@ int main()
                 int new_place = i - (size*size);
                 if (new_place < 0)
                 {continue;}
-                //if empty swap
+                //if empty swap down
                 if (grid[new_place]->empty )
                 {
                     grid[new_place]->empty = false;
@@ -355,7 +353,7 @@ int main()
                     continue;
                 }
                 std::ranges::shuffle(*elements, std::mt19937(std::random_device()()));
-
+                // if empty go randomy diagnal
                 grid[elements->at(0)]->empty = false;
                 grid[elements->at(0)]->celltype = grid[i]->celltype;
                 grid[i]->empty = true;
@@ -395,7 +393,7 @@ int main()
                     continue;
                 }
                 std::ranges::shuffle(*elements, std::mt19937(std::random_device()()));
-
+                // if empty go sideways
                 grid[elements->at(0)]->empty = false;
                 grid[elements->at(0)]->celltype = grid[i]->celltype;
                 grid[i]->empty = true;
@@ -409,9 +407,7 @@ int main()
 
         BeginDrawing();
         ClearBackground(BLACK);
-        DrawFPS(10,10);
-        DrawText(TextFormat("FRAME_TIME:%f", GetFrameTime()), 10, 40, 20, LIME);
-        DrawText(TextFormat("Cubes:%i", cubesammount), 10, 60, 20, LIME);
+
 
         BeginMode3D(cam);
         {
@@ -419,14 +415,14 @@ int main()
             DrawGrid(100,1);
             for (const auto &cube : grid)
             {
-                if (cube->empty or cube->hidden)
+                if (cube->empty)
                 {continue;}
                 if (cube->celltype == water)
                 {
                     cube->stationary >= 5
-                      ? DrawCubeV(cube->pos, Vector3{0.9, 0.9, 0.9}, DARKBLUE)
-                      : DrawCubeV(cube->pos, Vector3{0.9, 0.9, 0.9}, SKYBLUE);
-                    DrawCubeWiresV(cube->pos,Vector3{0.9,0.9,0.9},DARKBLUE);
+                      ? DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 200 })
+                      : DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 255 });
+                    DrawCubeWiresV(cube->pos,{0.9,0.9,0.9},{ 0, 82, 172, 255 });
                 }
                 if (cube->celltype == lava) {
                     DrawCubeV(cube->pos,Vector3{0.9,0.9,0.9},RED);
@@ -439,6 +435,9 @@ int main()
             }
         }
         EndMode3D();
+        DrawFPS(10,10);
+        DrawText(TextFormat("FRAME_TIME:%f", GetFrameTime()), 10, 40, 20, LIME);
+        DrawText(TextFormat("Cubes:%i", cubesammount), 10, 60, 20, LIME);
         EndDrawing();
     }
 

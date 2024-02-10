@@ -67,11 +67,6 @@ jobs:
     if: ${{ needs.build.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Bump version
-        id: bump_version
-        uses: actions/setup-node@v3
-        with:
-          node-version: '14'
       - name: Bump Version
         id: bump_version
         run: |

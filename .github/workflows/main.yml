@@ -9,9 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-and-upload:
     runs-on: ${{ matrix.os }}
-
     strategy:
       fail-fast: false
       matrix:
@@ -43,12 +42,13 @@ jobs:
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-      # Add this step to install libxrandr-dev on Linux runners
+      
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libxrandr-dev libxinerama-dev libglfw3-dev libxcursor-dev libxi-dev
+      
       - name: Configure CMake
         run: >
           cmake -B ${{ steps.strings.outputs.build-output-dir }}
@@ -56,30 +56,37 @@ jobs:
           -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           -S ${{ github.workspace }}
+      
       - name: Build
         run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
-
 
       - name: Test
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --build-config ${{ matrix.build_type }}
 
-      - name: Bump Version
-        id: bump_version
-        run: python bump_version.py
-    
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.c_compiler }}
+          path: ${{ steps.strings.outputs.build-output-dir }}/your-artifact-name
+
+  create-release:
+    needs: build-and-upload
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.bump_version.outputs.new_version }}
-          release_name: Release ${{ steps.bump_version.outputs.new_version }}
-          draft: false
-          prerelease: true
 
       - name: Push new tag
-        run: git push origin v${{ steps.bump_version.outputs.new_version }}
-
-      # Add any additional steps needed for your release process
+        run: git push origin v${{ needs.build-and-upload.outputs.new_version }}

@@ -71,38 +71,38 @@ jobs:
           path: ${{ steps.strings.outputs.build-output-dir }}
 
   prepare-release:
-    needs: build-and-upload
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Bump Version and Create Tag
-        id: bump_version
-        run: |
-          python bump_version.py
-          NEW_VERSION=$(cat NEW_VERSION.txt) # Assuming your Python script writes the new version to this file
-          git tag v$NEW_VERSION
-          git push origin v$NEW_VERSION
-          echo "::set-output name=new_version::$NEW_VERSION"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  needs: build-and-upload
+  runs-on: ubuntu-latest
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Bump Version and Create Tag
+      run: |
+        python bump_version.py
+        echo "New version is $NEW_VERSION"
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag v${{ env.NEW_VERSION }}
+        git push origin v${{ env.NEW_VERSION }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-release:
     needs: prepare-release
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v3
-        with:
-          path: artifacts
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: artifacts
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ needs.prepare-release.outputs.new_version }}
-          name: Release v${{ needs.prepare-release.outputs.new_version }}
-          files: artifacts/**
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: v${{ env.NEW_VERSION }}
+        name: Release v${{ env.NEW_VERSION }}
+        files: artifacts/**
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

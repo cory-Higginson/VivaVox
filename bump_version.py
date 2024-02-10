@@ -1,5 +1,6 @@
 import re
 import sys
+import os
 
 filename = "CMakeLists.txt"
 
@@ -24,8 +25,7 @@ try:
     # Increment the patch version
     new_patch = patch + 1
     new_version = f"{major}.{minor}.{new_patch}"
-    print(f"::set-output name=new_version::{new_version}")  # Set output for GitHub Actions
-
+    
     # Update the content with the new patch version
     updated_content = []
     for line in content:
@@ -37,6 +37,12 @@ try:
     # Write the updated content back to CMakeLists.txt
     with open(filename, 'w') as file:
         file.writelines(updated_content)
+
+    # Set the new version as an output variable for GitHub Actions
+    github_output = os.getenv('GITHUB_ENV')
+    if github_output:
+        with open(github_output, 'a') as f:
+            f.write(f"NEW_VERSION={new_version}\n")
 
 except Exception as e:
     print(f"Error: {str(e)}")

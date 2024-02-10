@@ -68,7 +68,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.c_compiler }}
-          path: ${{ steps.strings.outputs.build-output-dir }}/your-artifact-name
+          path: ${{ steps.strings.outputs.build-output-dir }}
 
   create-release:
     needs: build-and-upload

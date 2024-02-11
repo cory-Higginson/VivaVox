@@ -1,16 +1,21 @@
 
 #include "Cell.h"
 #include "FunctionRules.h"
+#include "raymath.h"
+#include "rlgl.h"
+
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <random>
 #include <raylib.h>
 #include <string>
+#include <unordered_map>
 
 const char* PROJECTNAME = "VivaVox";
-constexpr int size = 50;
+constexpr int size = 100;
 
 
 int xyToElement(int target_x, int target_z)
@@ -73,18 +78,68 @@ int xyToElement(int target_x, int target_z)
 }
 
 int xyzToElement(int x, int y, int z) {
-    int element = xyToElement(x,z);
-    if (element == -1)
-        return -1;
-    return element + (size*size) * y;
+  int element = xyToElement(x, z);
+  if (element == -1)
+    return -1;
+  return element + (size * size) * y;
 }
 
+void populate_grid(std::array<Cube, size * size * size>& grid) {
+  int element = 0;
 
+  /// POPULATE COORDS
+  for (int layer = 0; layer < size; ++layer) {
+    int top = 0, bottom = size - 1, left = 0, right = size - 1;
 
+    while (top <= bottom && left <= right) {
+      // Traverse top side from left to right
+      for (int i = left; i <= right; ++i) {
+        grid[element].pos.x = static_cast<float>(i);
+        grid[element].pos.y = static_cast<float>(layer);
+        grid[element].pos.z = static_cast<float>(top);
+        ++element;
+      }
+      ++top;
 
+      // Traverse right side from top to bottom
+      for (int i = top; i <= bottom; ++i) {
+        grid[element].pos.x = static_cast<float>(right);
+        grid[element].pos.y = static_cast<float>(layer);
+        grid[element].pos.z = static_cast<float>(i);
+        ++element;
+      }
+      --right;
 
-int main()
-{
+      // Traverse bottom side from right to left
+      if (top <= bottom) {
+        for (int i = right; i >= left; --i) {
+          grid[element].pos.x = static_cast<float>(i);
+          grid[element].pos.y = static_cast<float>(layer);
+          grid[element].pos.z = static_cast<float>(bottom);
+          ++element;
+        }
+        --bottom;
+      }
+
+      // Traverse left side from bottom to top
+      if (left <= right) {
+        for (int i = bottom; i >= top; --i) {
+          grid[element].pos.x = static_cast<float>(left);
+          grid[element].pos.y = static_cast<float>(layer);
+          grid[element].pos.z = static_cast<float>(i);
+          ++element;
+        }
+        ++left;
+      }
+    }
+  }
+}
+
+/// \brief run program
+/// \return 000:success
+/// \return 666: size isnt size
+int main() {
+
     InitWindow(1920,1080,PROJECTNAME);
     SetTargetFPS(60);
     std::cout << "Hello, World!" << std::endl;
@@ -95,9 +150,27 @@ int main()
     cam.fovy = 45.0f;
     cam.projection = CAMERA_PERSPECTIVE;
     DisableCursor();
-    int cubesammount = 0;
+    int cubesammount = (size * size * size) * 2;
+    rlEnableBackfaceCulling();
+    Mesh mesh = GenMeshCube(0.9,0.9,0.9);
 
+    // shaders
+    auto data = shader_data{};
+    Shader shader = LoadShaderFromMemory(data.instance_shader_vs,data.instance_shader_fs);
+    shader.locs[SHADER_LOC_MATRIX_MVP] = GetShaderLocation(shader, "mvp");
+    shader.locs[SHADER_LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    shader.locs[SHADER_LOC_MATRIX_MODEL] = GetShaderLocationAttrib(shader, "instanceTransform");
 
+    // Create one light
+    ///Materials
+
+    std::map<TYPE,Material> instance_matrials;
+    instance_matrials.try_emplace(water,LoadMaterialDefault());
+    instance_matrials.try_emplace(sand,LoadMaterialDefault());
+    instance_matrials.at(water).maps[MATERIAL_MAP_DIFFUSE].color = BLUE;
+    instance_matrials.at(sand).maps[MATERIAL_MAP_DIFFUSE].color = BEIGE;
+    instance_matrials.at(water).shader = shader;
+    instance_matrials.at(sand).shader = shader;
 
     //std::vector<Cube> water;
     if (size != size)
@@ -105,7 +178,8 @@ int main()
         return 666;
     }
 
-    std::array<std::unique_ptr<Cube>, size * size * size> grid = {};
+    std::unique_ptr<std::array<Cube, size * size * size>> grid = {};
+    grid = std::make_unique<std::array<Cube, size * size * size>>();
     /**
         int element = 0;
         for (int layer = 0; layer <= size; ++layer)
@@ -155,64 +229,14 @@ int main()
         }
     **/
 
-    int element = 0;
-    for (auto & cell : grid)
-    {
-        cell = std::make_unique<Cube>(Cube{Vector3{0,0,0},true,false,null,0});
-    }
+    populate_grid(*grid);
 
-    ///POPULATE COORDS
-    for (int layer = 0; layer < size; ++layer)
-    {
-        int top = 0, bottom = size - 1, left = 0, right = size - 1;
 
-        while (top <= bottom && left <= right) {
-            // Traverse top side from left to right
-            for (int i = left; i <= right; ++i) {
-                grid[element]->pos.x = static_cast<float>(i);
-                grid[element]->pos.y = static_cast<float>(layer);
-                grid[element]->pos.z = static_cast<float>(top);
-                ++element;
-            }
-            ++top;
+    //for (auto& unique_ptr : *grid) {
+    //    unique_ptr.empty = false;
+    //    unique_ptr.celltype = water;
+    //}
 
-            // Traverse right side from top to bottom
-            for (int i = top; i <= bottom; ++i) {
-                grid[element]->pos.x = static_cast<float>(right);
-                grid[element]->pos.y = static_cast<float>(layer);
-                grid[element]->pos.z = static_cast<float>(i);
-                ++element;
-            }
-            --right;
-
-            // Traverse bottom side from right to left
-            if (top <= bottom) {
-                for (int i = right; i >= left; --i) {
-                    grid[element]->pos.x = static_cast<float>(i);
-                    grid[element]->pos.y = static_cast<float>(layer);
-                    grid[element]->pos.z = static_cast<float>(bottom);
-                    ++element;
-                }
-                --bottom;
-            }
-
-            // Traverse left side from bottom to top
-            if (left <= right) {
-                for (int i = bottom; i >= top; --i) {
-                    grid[element]->pos.x = static_cast<float>(left);
-                    grid[element]->pos.y = static_cast<float>(layer);
-                    grid[element]->pos.z = static_cast<float>(i);
-                    ++element;
-                }
-                ++left;
-            }
-        }
-    }
-
-    for (auto& unique_ptr : grid) {
-        unique_ptr->empty = false;
-        unique_ptr->celltype = water;
-    }
 
     bool tap = false;
     int num = 999;
@@ -241,24 +265,24 @@ int main()
 
         if (tap)
         {
-            if (grid.back()->empty)
+            if (grid->back().empty)
             {
                 cubesammount++;
-                grid.back()->empty = false;
+                grid->back().empty = false;
                 if (num == 1)
                 {
-                    grid.back()->celltype = water;
+                    grid->back().celltype = water;
                 }
                 else if (num == 2)
                 {
-                    grid.back()->celltype = sand;
+                    grid->back().celltype = sand;
                 }
                 else if (num == 3)
                 {
-                    grid.back()->celltype = brick;
+                    grid->back().celltype = brick;
                 }
                 else {
-                    grid.back()->empty = true;
+                    grid->back().empty = true;
                     cubesammount--;
                 }
             }
@@ -266,21 +290,21 @@ int main()
 
 
         // PHYSICS
-        for (int i = 0; i < grid.size(); ++i)
+        for (int i = 0; i < grid->size(); ++i)
         {
-            if (grid[i]->stationary >= 5)
+            if (grid->at(i).stationary >= 5)
             {
                 continue;
             }
 
             // skip empty
-            if (grid[i]->empty) {
-                grid[i]->celltype = null;
+            if (grid->at(i).empty) {
+                grid->at(i).celltype = null;
                 continue;
             }
 
             // skip unmovable
-            if (grid[i]->celltype - unmovable_solid >= 0)
+            if (grid->at(i).celltype - unmovable_solid >= 0)
             {
                 continue;
             }
@@ -293,31 +317,34 @@ int main()
                 if (new_place < 0)
                 {continue;}
                 //if empty swap down
-                if (grid[new_place]->empty )
+                if (grid->at(new_place).empty )
                 {
-                    grid[new_place]->empty = false;
-                    grid[new_place]->celltype = grid[i]->celltype;
-                    grid[i]->empty = true;
-                    grid[i]->stationary = 0;
-                    grid[new_place]->stationary = 0;
+                    grid->at(new_place).empty = false;
+                    grid->at(new_place).celltype = grid->at(i).celltype;
+                    grid->at(i).empty = true;
+                    grid->at(i).stationary = 0;
+                    grid->at(new_place).stationary = 0;
                     //std::cout << "down" << std::endl;
                     continue;
                 }
                 //if not empty and diffrent types
-                if (grid[new_place]->celltype != grid[i]->celltype)
+                if (grid->at(new_place).celltype != grid->at(i).celltype)
                 {
                     // if bellow block is a liquid
-                    if (grid[new_place]->celltype < moving_solid)
+                    if (grid->at(new_place).celltype < moving_solid)
                     {
                         // if top cell is denser swap
-                        if (grid[new_place]->celltype < grid[i]->celltype)
+                        if (grid->at(new_place).celltype < grid->at(i).celltype)
                         {
-                            grid[new_place].swap(grid[i]);
-                            const Vector3 vec = grid[new_place]->pos;
-                            grid[new_place]->pos = grid[i]->pos;
-                            grid[i]->pos = vec;
-                            grid[i]->stationary = 0;
-                            grid[new_place]->stationary = 0;
+                            const Vector3 vec = grid->at(new_place).pos;
+                            const TYPE type = grid->at(new_place).celltype;
+                            grid->at(new_place).pos = grid->at(i).pos;
+                            grid->at(new_place).celltype = grid->at(i).celltype;
+                            grid->at(i).pos = vec;
+                            grid->at(i).celltype = type;
+                            grid->at(i).stationary = 0;
+                            grid->at(new_place).stationary = 0;
+
                             continue;
                         }
                     }
@@ -325,114 +352,143 @@ int main()
 
                 // go diagnally
                 int x ,y ,z;
-                x = static_cast<int>(grid[new_place]->pos.x);
-                y = static_cast<int>(grid[new_place]->pos.y);
-                z = static_cast<int>(grid[new_place]->pos.z);
+                x = static_cast<int>(grid->at(new_place).pos.x);
+                y = static_cast<int>(grid->at(new_place).pos.y);
+                z = static_cast<int>(grid->at(new_place).pos.z);
                 auto elements = new std::vector<int>;
                 elements->clear();
                 elements->reserve(4);
                 int element = 0;
                 element = xyzToElement(x-1,y,z);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element =xyzToElement(x+1,y,z);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element = xyzToElement(x,y,z-1);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element = xyzToElement(x,y,z+1);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 if (elements->empty()) {
-                    grid[i]->stationary++;
+                    grid->at(i).stationary++;
                     continue;
                 }
                 std::ranges::shuffle(*elements, std::mt19937(std::random_device()()));
                 // if empty go randomy diagnal
-                grid[elements->at(0)]->empty = false;
-                grid[elements->at(0)]->celltype = grid[i]->celltype;
-                grid[i]->empty = true;
-                grid[i]->stationary = 0;
-                grid[elements->at(0)]->stationary = 0;
+                grid->at(elements->at(0)).empty = false;
+                grid->at(elements->at(0)).celltype = grid->at(i).celltype;
+                grid->at(i).empty = true;
+                grid->at(i).stationary = 0;
+                grid->at(elements->at(0)).stationary = 0;
                 continue;
             }
             // if water
-            if (grid[i]->celltype != null and grid[i]->celltype < moving_solid)
+            if (grid->at(i).celltype != null and grid->at(i).celltype < moving_solid)
             {
                 // swap sideways
-                int x = static_cast<int>(grid[i]->pos.x);
-                int y = static_cast<int>(grid[i]->pos.y);
-                int z = static_cast<int>(grid[i]->pos.z);
+                int x = static_cast<int>(grid->at(i).pos.x);
+                int y = static_cast<int>(grid->at(i).pos.y);
+                int z = static_cast<int>(grid->at(i).pos.z);
                 auto elements = new std::vector<int>;
                 elements->clear();
                 elements->reserve(4);
                 int element = 0;
                 element = xyzToElement(x-1,y,z);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element =xyzToElement(x+1,y,z);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element = xyzToElement(x,y,z-1);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 element = xyzToElement(x,y,z+1);
-                if (element != -1 and grid[element]->empty) {
+                if (element != -1 and grid->at(element).empty) {
                     elements->emplace_back(element);
                 }
                 if (elements->empty()) {
-                    grid[i]->stationary++;
+                    grid->at(i).stationary++;
                     continue;
                 }
                 std::ranges::shuffle(*elements, std::mt19937(std::random_device()()));
                 // if empty go sideways
-                grid[elements->at(0)]->empty = false;
-                grid[elements->at(0)]->celltype = grid[i]->celltype;
-                grid[i]->empty = true;
-                grid[i]->stationary = 0;
-                grid[elements->at(0)]->stationary = 0;
+                grid->at(elements->at(0)).empty = false;
+                grid->at(elements->at(0)).celltype = grid->at(i).celltype;
+                grid->at(i).empty = true;
+                grid->at(i).stationary = 0;
+                grid->at(elements->at(0)).stationary = 0;
                 continue;
             }
-            grid[i]->stationary++;
+            grid->at(i).stationary++;
             continue;
         }
 
+        std::unordered_map<TYPE,std::vector<Matrix>> groups;
+        for (const auto &cube : *grid) {
+            if (cube.celltype == null)
+                continue;
+            groups[cube.celltype].emplace_back(MatrixTranslate(cube.pos.x,cube.pos.y,cube.pos.z));
+        }
+       //for (const auto &cube : grid2) {
+       //    if (cube->celltype == null)
+       //        continue;
+       //    groups[cube->celltype].emplace_back(MatrixTranslate(cube->pos.x,cube->pos.y,cube->pos.z));
+       //}
+        //for (const auto &cube : grid3) {
+        //    if (cube->celltype == null)
+        //        continue;
+        //    groups[cube->celltype].emplace_back(MatrixTranslate(cube->pos.x,cube->pos.y,cube->pos.z));
+        //}
+        //for (const auto &cube : grid4) {
+        //    if (cube->celltype == null)
+        //        continue;
+        //    groups[cube->celltype].emplace_back(MatrixTranslate(cube->pos.x,cube->pos.y,cube->pos.z));
+        //}
+
         BeginDrawing();
         ClearBackground(BLACK);
-
-
         BeginMode3D(cam);
         {
-            DrawCubeWires({5,5,5},10,10,10,RED);
+            //DrawCubeWires({5,5,5},10,10,10,RED);
             DrawGrid(100,1);
-            for (const auto &cube : grid)
-            {
-                if (cube->empty)
-                {continue;}
-                if (cube->celltype == water)
-                {
-                    cube->stationary >= 5
-                      ? DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 200 })
-                      : DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 255 });
-                    DrawCubeWiresV(cube->pos,{0.9,0.9,0.9},{ 0, 82, 172, 255 });
-                }
-                if (cube->celltype == lava) {
-                    DrawCubeV(cube->pos,Vector3{0.9,0.9,0.9},RED);
-                    DrawCubeWiresV(cube->pos,Vector3{0.9,0.9,0.9},MAROON);
-                }
-                if (cube->celltype == sand) {
-                    DrawCubeV(cube->pos,Vector3{0.9,0.9,0.9},BEIGE);
-                    DrawCubeWiresV(cube->pos,Vector3{0.9,0.9,0.9},GOLD);
-                }
+
+            for (const auto &[fst, snd] : groups) {
+                rlEnableWireMode();
+                DrawMeshInstanced(mesh,instance_matrials[fst],snd.data(),snd.size());
+                rlDisableWireMode();
             }
+
+
+            //for (const auto &cube : grid)
+            //{
+            //    if (cube->empty)
+            //    {continue;}
+            //    if (cube->celltype == water)
+            //    {
+            //        DrawMesh(mesh,mats,MatrixTranslate(cube->pos.x,cube->pos.y,cube->pos.z));
+            //        //cube->stationary >= 5
+            //        //  ? DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 200 })
+            //        //  : DrawCubeV (cube->pos, {0.9, 0.9, 0.9}, { 102, 191, 255, 255 });
+            //        //DrawCubeWiresV(cube->pos,{0.9,0.9,0.9},{ 0, 82, 172, 255 });
+            //    }
+            //    if (cube->celltype == lava) {
+            //        DrawCubeV(cube->pos,Vector3{0.9,0.9,0.9},RED);
+            //        DrawCubeWiresV(cube->pos,Vector3{0.9,0.9,0.9},MAROON);
+            //    }
+            //    if (cube->celltype == sand) {
+            //        DrawCubeV(cube->pos,Vector3{0.9,0.9,0.9},BEIGE);
+            //        DrawCubeWiresV(cube->pos,Vector3{0.9,0.9,0.9},GOLD);
+            //    }
+            //}
         }
         EndMode3D();
         DrawFPS(10,10);

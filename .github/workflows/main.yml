@@ -64,45 +64,47 @@ jobs:
         working-directory: ${{ steps.strings.outputs.build-output-dir }}
         run: ctest --build-config ${{ matrix.build_type }}
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.c_compiler }}
-          path: ${{ steps.strings.outputs.build-output-dir }}
-
-  prepare-release:
-    needs: build-and-upload
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-    
-    - name: Bump Version and Create Tag
-      run: |
-        python bump_version.py
-        echo "New version is $NEW_VERSION"
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git tag v${{ env.NEW_VERSION }}
-        git push origin v${{ env.NEW_VERSION }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  create-release:
-    needs: prepare-release
-    runs-on: ubuntu-latest
-    steps:
-    - name: Download all artifacts
-      uses: actions/download-artifact@v3
-      with:
-        path: artifacts
-
-    - name: Create Release
-      uses: softprops/action-gh-release@v1
-      with:
-        tag_name: v${{ env.NEW_VERSION }}
-        name: Release v${{ env.NEW_VERSION }}
-        files: artifacts/**
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#      - name: Upload Artifact
+#        uses: actions/upload-artifact@v3
+#        with:
+#          name: ${{ matrix.os }}-${{ matrix.build_type }}-${{ matrix.c_compiler }}
+#          path: ${{ steps.strings.outputs.build-output-dir }}
+#
+#  prepare-release:
+#    needs: build-and-upload
+#    runs-on: ubuntu-latest
+#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+#    steps:
+#    - name: Checkout code
+#      uses: actions/checkout@v3
+#
+#    - name: Bump Version and Create Tag
+#      run: |
+#        python bump_version.py
+#        echo "New version is $NEW_VERSION"
+#        git config --local user.email "action@github.com"
+#        git config --local user.name "GitHub Action"
+#        git tag v${{ env.NEW_VERSION }}
+#        git push origin v${{ env.NEW_VERSION }}
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#
+#  create-release:
+#    needs: prepare-release
+#    runs-on: ubuntu-latest
+#    steps:
+#    - name: Download all artifacts
+#      uses: actions/download-artifact@v3
+#      with:
+#        path: artifacts
+#
+#    - name: Create Release
+#      uses: softprops/action-gh-release@v1
+#      with:
+#        tag_name: v${{ env.NEW_VERSION }}
+#        name: Release v${{ env.NEW_VERSION }}
+#        files: artifacts/**
+#
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#

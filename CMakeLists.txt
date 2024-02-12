@@ -11,6 +11,24 @@ set(CMAKE_CXX_STANDARD 20)
 # Generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+#other dependents
+
+if (NOT NabiAllocator_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+            NabiAllocator
+            GIT_REPOSITORY https://github.com/WzrdIsTaken/Nabi-Allocator.git
+            GIT_TAG main
+    )
+    fetchcontent_getproperties(NabiAllocator)
+    if (NOT NabiAllocator_POPULATED) # Have we downloaded raylib yet?
+        set(FETCHCONTENT_QUIET NO)
+        FetchContent_Populate(NabiAllocator)
+    endif ()
+endif ()
+
+
+
 # Dependencies
 set(RAYLIB_VERSION 5.0)
 find_package(raylib ${RAYLIB_VERSION} QUIET) # QUIET or REQUIRED
@@ -39,18 +57,15 @@ add_executable(${PROJECT_NAME} main.cpp
         RuleTable.cpp
         RuleTable.h
         main.cpp)
-#set(raylib_VERBOSE 1)
+
 target_link_libraries(${PROJECT_NAME} raylib)
+target_include_directories(${PROJECT_NAME} PRIVATE ${NabiAllocator_SOURCE_DIR})
 
-## Web Configurations
-#if (${PLATFORM} STREQUAL "Web")
-#    # Tell Emscripten to build an example.html file.
-#    set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX ".html")
-#endif()
 
-## Checks if OSX and links appropriate frameworks (Only required on MacOS)
-#if (APPLE)
-#    target_link_libraries(${PROJECT_NAME} "-framework IOKit")
-#    target_link_libraries(${PROJECT_NAME} "-framework Cocoa")
-#    target_link_libraries(${PROJECT_NAME} "-framework OpenGL")
-#endif()
+
+# Checks if OSX and links appropriate frameworks (Only required on MacOS)
+if (APPLE)
+    target_link_libraries(${PROJECT_NAME} "-framework IOKit")
+    target_link_libraries(${PROJECT_NAME} "-framework Cocoa")
+    target_link_libraries(${PROJECT_NAME} "-framework OpenGL")
+endif()

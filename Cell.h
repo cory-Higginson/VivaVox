@@ -21,6 +21,7 @@ enum TYPE : int
   unmovable_solid = 300,
   brick,
   ice,
+  BLACKHOLE
 };
 
 

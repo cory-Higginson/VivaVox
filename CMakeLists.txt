@@ -11,23 +11,6 @@ set(CMAKE_CXX_STANDARD 20)
 # Generate compile_commands.json
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-#other dependents
-
-if (NOT NabiAllocator_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-            NabiAllocator
-            GIT_REPOSITORY https://github.com/WzrdIsTaken/Nabi-Allocator.git
-            GIT_TAG main
-    )
-    fetchcontent_getproperties(NabiAllocator)
-    if (NOT NabiAllocator_POPULATED) # Have we downloaded raylib yet?
-        set(FETCHCONTENT_QUIET NO)
-        FetchContent_Populate(NabiAllocator)
-    endif ()
-endif ()
-
-
 
 # Dependencies
 set(RAYLIB_VERSION 5.0)

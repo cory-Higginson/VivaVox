@@ -234,16 +234,16 @@ int main() {
     populate_grid(*grid);
 
 
-    for (int i = grid->size()/2; i < grid->size(); ++i)
-    {
-        grid->at(i).empty = false;
-        grid->at(i).celltype = sand;
-    }
-    for (int i = 0; i < grid->size()/2; ++i)
-    {
-        grid->at(i).empty = false;
-        grid->at(i).celltype = water;
-    }
+    //for (int i = grid->size()/2; i < grid->size(); ++i)
+    //{
+    //    grid->at(i).empty = false;
+    //    grid->at(i).celltype = sand;
+    //}
+    //for (int i = 0; i < grid->size()/2; ++i)
+    //{
+    //    grid->at(i).empty = false;
+    //    grid->at(i).celltype = water;
+    //}
 
     bool tap = false;
     int num = 999;
@@ -313,7 +313,7 @@ int main() {
         // PHYSICS
         for (int i = 0; i < grid->size(); ++i)
         {
-            if (grid->at(i).stationary <= 5)
+            if (grid->at(i).stationary >= 5)
             {
                 continue;
             }
@@ -465,29 +465,29 @@ int main() {
             continue;
         }
 
-        //std::unordered_map<TYPE,std::vector<Matrix>> groups;
-        //for (const auto &cube : *grid)
-        //{
-        //    if (cube.celltype == null)
-        //        continue;
-        //    groups[cube.celltype].emplace_back(MatrixTranslate(cube.pos.x,cube.pos.y,cube.pos.z));
-        //}
+        std::unordered_map<TYPE,std::vector<Matrix>> groups;
+        for (const auto &cube : *grid)
+        {
+            if (cube.celltype == null)
+                continue;
+            groups[cube.celltype].emplace_back(MatrixTranslate(cube.pos.x,cube.pos.y,cube.pos.z));
+        }
 
         BeginDrawing();
         ClearBackground(BLACK);
-        //BeginMode3D(cam);
-        //{
-        //    DrawCubeWires({size/2,size/2,size/2},size,size,size,RED);
-        //    DrawGrid(100,1);
+        BeginMode3D(cam);
+        {
+            DrawCubeWires({size/2,size/2,size/2},size,size,size,RED);
+            DrawGrid(100,1);
 
-        //    for (const auto &[fst, snd] : groups) {
-        //        //rlEnableWireMode();
-        //        DrawMeshInstanced(mesh,instance_matrials[fst],snd.data(),snd.size());
-        //        //rlDisableWireMode();
-        //    }
+            for (const auto &[fst, snd] : groups) {
+                //rlEnableWireMode();
+                DrawMeshInstanced(mesh,instance_matrials[fst],snd.data(),snd.size());
+                //rlDisableWireMode();
+            }
 
-        //}
-        //EndMode3D();
+        }
+        EndMode3D();
         DrawFPS(10,10);
         DrawText(TextFormat("FRAME_TIME:%f", GetFrameTime()), 10, 40, 20, LIME);
         DrawText(TextFormat("Cubes:%i", cubesammount), 10, 60, 20, LIME);
